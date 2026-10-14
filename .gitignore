@@ -13,3 +13,5 @@ wheels/
 .env
 CLAUDE.md
 .mcp.json
+# Local test/audit artifacts
+.pytest_cache/
