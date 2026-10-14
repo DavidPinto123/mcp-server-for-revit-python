@@ -52,6 +52,31 @@ manifest; implementation docstrings remain developer documentation.
    Answer reviewer feedback, review Autodesk's prepared installer and verify the
    final public Marketplace listing before calling publication complete.
 
+## Publisher Corner submission checklist
+
+The live App Submission Guidelines dialog checked on 14 October 2026 adds these
+mandatory prerequisites. A saved draft does not prove they have been met:
+
+- Detailed app description and general usage instructions of at least 1,500
+  characters each. The listing draft includes text above both thresholds.
+- A clear graphical app icon, at least four workflow screenshots, and a workflow
+  video if available. Capture the exact candidate in Revit; do not present unit
+  tests or another product's UI as runtime screenshots.
+- Binary app files and complete installation/uninstallation instructions. The
+  source review ZIP does not replace the required installable package; confirm
+  how Autodesk handles Python/pyRevit packaging before submission.
+- Compatibility with the latest Autodesk product version, graceful input/error
+  handling, no fatal errors, and verified uninstall behavior.
+- F1 help on the ribbon. The Connect, Disconnect and Privacy command bundles use
+  pyRevit's documented `help_url` metadata to open their relevant public help.
+  Verify the actual ribbon F1 behavior in the clean Revit 2027 validation.
+- Company URL, public publisher privacy-policy URL and a three-part version number.
+
+The default Marketplace end-user agreement restricts redistribution and
+modification. Obtain an MIT-preserving end-user agreement that also meets the
+Publisher Agreement's required terms; do not silently replace the repository's
+MIT license with the default proprietary restrictions.
+
 ## Current requirements verified 14 October 2026
 
 - [MCP publisher guide](https://aps.autodesk.com/marketplace/mcp-publisher-guide)
