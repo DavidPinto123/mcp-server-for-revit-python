@@ -6,6 +6,8 @@ import anyio
 from mcp.server.fastmcp import FastMCP, Image, Context
 import base64
 from typing import Optional, Dict, Any, Union
+from revit_mcp.pairing import authorization_headers
+from tools.http_security import PairingMiddleware
 
 # Create a generic MCP server for interacting with Revit
 # Use stateless_http=True and json_response=True for better compatibility
@@ -18,11 +20,16 @@ mcp = FastMCP(
 )
 
 # Configuration
-# Revit runs on Windows; when it lives in a VM the routes server is not on the
-# host loopback, so allow overriding the target via the environment.
+# The submitted local architecture only connects to the same machine.
+# Remote pyRevit Routes requires a separately reviewed authenticated HTTPS design.
 REVIT_HOST = os.environ.get("REVIT_HOST", "127.0.0.1")
+if REVIT_HOST not in {"127.0.0.1", "localhost", "::1"}:
+    raise ValueError("REVIT_HOST must be loopback; remote HTTP bridges are not supported.")
 REVIT_PORT = int(os.environ.get("REVIT_PORT", "48884"))
-BASE_URL = f"http://{REVIT_HOST}:{REVIT_PORT}/revit_mcp"
+if not 1 <= REVIT_PORT <= 65535:
+    raise ValueError("REVIT_PORT must be between 1 and 65535.")
+URL_HOST = "[::1]" if REVIT_HOST == "::1" else REVIT_HOST
+BASE_URL = f"http://{URL_HOST}:{REVIT_PORT}/revit_mcp"
 
 
 async def revit_get(endpoint: str, ctx: Context = None, **kwargs) -> Union[Dict, str]:
@@ -38,7 +45,7 @@ async def revit_post(endpoint: str, data: Dict[str, Any], ctx: Context = None, *
 async def revit_image(endpoint: str, ctx: Context = None) -> Union[Image, str]:
     """GET request that returns an Image object"""
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=60.0, trust_env=False, headers=authorization_headers()) as client:
             response = await client.get(f"{BASE_URL}{endpoint}")
             
             if response.status_code == 200:
@@ -58,7 +65,7 @@ async def _revit_call(method: str, endpoint: str, data: Dict = None, ctx: Contex
                      timeout: float = 30.0, params: Dict = None) -> Union[Dict, str]:
     """Internal function handling all HTTP calls"""
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with httpx.AsyncClient(timeout=timeout, trust_env=False, headers=authorization_headers()) as client:
             url = f"{BASE_URL}{endpoint}"
 
             if method == "GET":
@@ -79,26 +86,24 @@ from tools import register_tools
 register_tools(mcp, revit_get, revit_post, revit_image)
 
 
-async def run_combined_async():
-    """Run server with both SSE and streamable-http endpoints.
+def build_http_app(transport):
+    """Build an authenticated app for the selected loopback transport."""
+    if transport not in {"sse", "streamable-http", "combined"}:
+        raise ValueError("Unknown HTTP transport.")
+    if transport == "sse":
+        http_app = mcp.sse_app()
+    else:
+        http_app = mcp.streamable_http_app()
+        if transport == "combined":
+            http_app.routes.extend(mcp.sse_app().routes)
+    http_app.add_middleware(PairingMiddleware)
+    return http_app
 
-    This allows clients to connect via either:
-    - SSE: GET /sse, POST /messages/
-    - Streamable-HTTP: POST/GET /mcp
-    """
+
+async def run_http_async(transport):
+    """Run paired, loopback-only SSE, streamable HTTP, or both."""
     import uvicorn
-
-    # Get the streamable-http app first - it has the proper lifespan
-    # that initializes the session manager's task group
-    http_app = mcp.streamable_http_app()
-
-    # Get SSE routes (SSE doesn't need special lifespan - it creates
-    # task groups per-request in connect_sse())
-    sse_app = mcp.sse_app()
-
-    # Add SSE routes to the http app (preserving its lifespan)
-    for route in sse_app.routes:
-        http_app.routes.append(route)
+    http_app = build_http_app(transport)
 
     config = uvicorn.Config(
         http_app,
@@ -118,9 +123,9 @@ if __name__ == "__main__":
     elif "--http" in sys.argv or "--streamable-http" in sys.argv:
         transport = "streamable-http"
     elif "--combined" in sys.argv:
-        # Run both SSE and streamable-http transports simultaneously
-        print("Starting combined server with SSE (/sse, /messages/) and streamable-http (/mcp) endpoints...")
-        anyio.run(run_combined_async)
-        sys.exit(0)
+        transport = "combined"
 
-    mcp.run(transport=transport)
+    if transport == "stdio":
+        mcp.run(transport="stdio")
+    else:
+        anyio.run(run_http_async, transport)

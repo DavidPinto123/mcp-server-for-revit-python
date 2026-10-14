@@ -9,6 +9,7 @@ from Autodesk.Revit.UI import RevitCommandId, PostableCommand
 import json
 import logging
 import time
+from .security import authorize_request
 import traceback
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,9 @@ def register_document_routes(api):
             "audit": false
         }
         """
+        denial = authorize_request(request, action='Open a document')
+        if denial is not None:
+            return denial
         try:
             data = (
                 json.loads(request.data)
@@ -174,6 +178,9 @@ def register_document_routes(api):
             "save": false
         }
         """
+        denial = authorize_request(request, action='Close a document')
+        if denial is not None:
+            return denial
         try:
             data = (
                 json.loads(request.data)
@@ -266,6 +273,9 @@ def register_document_routes(api):
         If file_path is null/omitted, saves in place.
         If file_path is provided, performs Save As to that location.
         """
+        denial = authorize_request(request, action='Save a document')
+        if denial is not None:
+            return denial
         try:
             data = (
                 json.loads(request.data)
@@ -339,6 +349,9 @@ def register_document_routes(api):
             "relinquish_all": true
         }
         """
+        denial = authorize_request(request, action='Synchronize with central')
+        if denial is not None:
+            return denial
         try:
             data = (
                 json.loads(request.data)
