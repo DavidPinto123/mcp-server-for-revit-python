@@ -41,10 +41,13 @@ manifest; implementation docstrings remain developer documentation.
    document-lifecycle work must be reconciled with the final candidate.
 5. Run a dependency/security scan and resolve high-severity findings before signing.
    Unit tests and an SDK upgrade do not constitute a clean vulnerability scan.
-6. Complete the publisher profile, public privacy-policy URL and assets. An
+6. Confirm third-party licensing for the GPL-3.0 pyRevit dependency and include the
+   required Marketplace end-user agreement. This repository's MIT license alone
+   does not establish eligibility of the final dependency/package arrangement.
+7. Complete the publisher profile, public privacy-policy URL and assets. An
    authorized publisher must review and accept any Publisher Agreement at the
    point Autodesk presents it, and sign only truthful declaration attestations.
-7. Complete the MCP Publisher Declaration Form with the exact package's manifest,
+8. Complete the MCP Publisher Declaration Form with the exact package's manifest,
    then submit the listing/package in Publisher Corner. Retain confirmation IDs.
    Answer reviewer feedback, review Autodesk's prepared installer and verify the
    final public Marketplace listing before calling publication complete.
